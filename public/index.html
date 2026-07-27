@@ -3,86 +3,254 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Printly — Prompt → printable 3D model</title>
-<meta name="description" content="Type a prompt, get a printable STL with a live 3D preview and one-click print. An OKX.AI agent service, pay-per-use with USDT0 on X Layer.">
+<title>Printly — a prompt, printed</title>
+<meta name="description" content="Describe an object and Printly designs a real, watertight STL you can preview in 3D and send to a printer. An OKX.AI agent service, pay-per-use with USDT0 on X Layer.">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<meta name="theme-color" content="#0b0f17">
-<!-- Open Graph / link preview -->
+<meta name="theme-color" content="#f4f1ea">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Printly">
-<meta property="og:title" content="Printly — Prompt → printable 3D model">
-<meta property="og:description" content="Type a prompt, get a printable STL with a live 3D preview and one-click print. An OKX.AI agent service, pay-per-use on X Layer.">
+<meta property="og:title" content="Printly — a prompt, printed">
+<meta property="og:description" content="Describe an object. Get a printable STL with a live 3D preview and one-click print. An OKX.AI agent service on X Layer.">
 <meta property="og:url" content="https://printly3d.vercel.app">
 <meta property="og:image" content="https://printly3d.vercel.app/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Printly — Prompt → printable 3D model">
-<meta name="twitter:description" content="Type a prompt, get a printable STL with a live 3D preview and one-click print. Pay-per-use on X Layer.">
+<meta name="twitter:title" content="Printly — a prompt, printed">
+<meta name="twitter:description" content="Describe an object. Get a printable STL with a live 3D preview. Pay-per-use on X Layer.">
 <meta name="twitter:image" content="https://printly3d.vercel.app/og.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root{color-scheme:dark}
+  :root{
+    --paper:#f4f1ea; --paper-2:#efeae0; --ink:#17150f; --ink-2:#5c564a; --ink-3:#8a8271;
+    --line:#e0dacd; --ember:#e0552b; --card:#faf8f3;
+    --serif:'Fraunces',Georgia,serif; --sans:'Hanken Grotesk',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(160deg,#141a24,#0b0f17);color:#e6e9ef;min-height:100vh}
-  .wrap{max-width:960px;margin:0 auto;padding:32px 22px 60px}
-  header{display:flex;align-items:center;gap:12px}
-  header img{width:40px;height:40px;border-radius:10px}
-  header b{font-size:20px;font-weight:700}
-  .hero{margin:56px 0 40px}
-  .hero h1{font-size:clamp(34px,6vw,58px);line-height:1.1;font-weight:800;letter-spacing:-.02em}
-  .hero h1 span{background:linear-gradient(90deg,#a78bfa,#6366f1);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero p{margin-top:16px;font-size:clamp(16px,2.4vw,20px);color:#a5b0c2;max-width:620px}
-  .cta{margin-top:28px;display:flex;gap:12px;flex-wrap:wrap}
-  a.btn{text-decoration:none;padding:12px 20px;border-radius:11px;font-weight:600;display:inline-block}
-  a.primary{background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff}
-  a.ghost{background:#151a22;color:#e6e9ef;border:1px solid #2a3240}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:52px}
-  .card{background:#12161f;border:1px solid #232936;border-radius:14px;padding:20px}
-  .card .n{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
-  .card h3{margin:12px 0 6px;font-size:16px}
-  .card p{font-size:14px;color:#8b93a7}
-  .api{margin-top:52px;background:#0d1117;border:1px solid #232936;border-radius:14px;padding:20px;overflow-x:auto}
-  .api h3{font-size:14px;color:#8b93a7;margin-bottom:10px;font-weight:600}
-  pre{font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9d3e5;white-space:pre}
-  .muted{color:#6f7891}
-  footer{margin-top:52px;padding-top:22px;border-top:1px solid #232936;color:#8b93a7;font-size:14px;display:flex;gap:16px;flex-wrap:wrap}
-  footer a{color:#a5b0c2}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--paper);color:var(--ink);line-height:1.55;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+    background-image:radial-gradient(circle at 1px 1px,rgba(23,21,15,.05) 1px,transparent 0);background-size:26px 26px}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+  a{color:inherit;text-decoration:none}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0;
+    animation:fade .8s both}
+  nav .brand{display:flex;align-items:center;gap:11px;font-weight:600;font-size:18px;letter-spacing:-.01em}
+  nav .brand img{width:32px;height:32px;border-radius:9px}
+  nav .links{display:flex;align-items:center;gap:26px;font-size:14px;color:var(--ink-2)}
+  nav .links a:hover{color:var(--ink)}
+  .pill{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ember);
+    border:1px solid var(--ember);border-radius:999px;padding:4px 10px}
+
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;
+    padding:52px 0 40px;min-height:70vh}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-3);margin-bottom:22px;animation:fadeUp .8s both .05s}
+  .eyebrow b{color:var(--ember);font-weight:500}
+  h1{font-family:var(--serif);font-weight:500;font-size:clamp(40px,5.4vw,72px);line-height:1.02;
+    letter-spacing:-.02em;animation:fadeUp .9s both .12s}
+  h1 em{font-style:italic;color:var(--ember)}
+  .sub{margin-top:22px;font-size:clamp(16px,1.6vw,19px);color:var(--ink-2);max-width:30em;
+    animation:fadeUp .9s both .2s}
+
+  .promptbar{margin-top:30px;display:flex;align-items:center;gap:12px;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:15px 18px;max-width:34em;
+    box-shadow:0 1px 0 rgba(23,21,15,.03);animation:fadeUp .9s both .28s}
+  .promptbar .dot{width:8px;height:8px;border-radius:50%;background:var(--ember);flex:none;
+    box-shadow:0 0 0 4px rgba(224,85,43,.14)}
+  .promptbar .typed{font-family:var(--mono);font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden}
+  .promptbar .caret{display:inline-block;width:2px;height:1.1em;background:var(--ink);vertical-align:-2px;
+    margin-left:2px;animation:blink 1s steps(1) infinite}
+
+  .chips{margin-top:18px;display:flex;flex-wrap:wrap;gap:9px;animation:fadeUp .9s both .36s}
+  .chip{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);background:transparent;
+    border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer;
+    transition:all .25s ease}
+  .chip:hover{border-color:var(--ink-3);color:var(--ink);transform:translateY(-1px)}
+  .chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+  .cta{margin-top:30px;display:flex;gap:14px;flex-wrap:wrap;animation:fadeUp .9s both .44s}
+  .btn{font-size:14.5px;font-weight:600;padding:12px 22px;border-radius:11px;cursor:pointer;
+    transition:transform .2s ease,box-shadow .2s ease;border:1px solid transparent;display:inline-flex;align-items:center;gap:8px}
+  .btn.solid{background:var(--ink);color:var(--paper)}
+  .btn.solid:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(23,21,15,.16)}
+  .btn.line{background:transparent;border-color:var(--line);color:var(--ink)}
+  .btn.line:hover{border-color:var(--ink);transform:translateY(-2px)}
+
+  .stage{position:relative;aspect-ratio:1/1;border-radius:22px;border:1px solid var(--line);
+    background:radial-gradient(120% 120% at 50% 25%,#fbfaf6,#eae4d8);overflow:hidden;
+    animation:fadeIn 1.1s both .3s}
+  .stage canvas{display:block;width:100%;height:100%;cursor:grab}
+  .stage canvas:active{cursor:grabbing}
+  .stage .tag{position:absolute;left:16px;bottom:14px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.05em;color:var(--ink-3);background:rgba(250,248,243,.8);backdrop-filter:blur(4px);
+    padding:5px 10px;border-radius:8px;border:1px solid var(--line)}
+  .stage .load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:12px;color:var(--ink-3);opacity:0;transition:opacity .2s;pointer-events:none}
+  .stage .load.on{opacity:1}
+
+  .strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:20px;
+    display:grid;grid-template-columns:repeat(3,1fr)}
+  .strip .cell{padding:30px 26px;border-left:1px solid var(--line)}
+  .strip .cell:first-child{border-left:none}
+  .strip .k{font-family:var(--mono);font-size:12px;color:var(--ember);letter-spacing:.08em}
+  .strip .cell h3{font-family:var(--serif);font-weight:500;font-size:21px;margin:10px 0 6px}
+  .strip .cell p{font-size:14.5px;color:var(--ink-2)}
+
+  .code{margin:56px 0;background:var(--ink);color:#efeae0;border-radius:18px;padding:26px 28px;overflow-x:auto}
+  .code .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--ember);text-transform:uppercase;margin-bottom:14px}
+  .code pre{font-family:var(--mono);font-size:13.5px;line-height:1.7;color:#d9d3c6;white-space:pre}
+  .code .g{color:#8a8271}
+
+  footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
+    padding:34px 0 50px;color:var(--ink-3);font-size:13.5px;font-family:var(--mono)}
+  footer a:hover{color:var(--ink)}
+
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+  @keyframes blink{50%{opacity:0}}
+  @media(max-width:860px){.hero{grid-template-columns:1fr;gap:34px}.stage{order:-1}.strip{grid-template-columns:1fr}.strip .cell{border-left:none;border-top:1px solid var(--line)}.strip .cell:first-child{border-top:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header><img src="/icon.png" alt="Printly logo"><b>Printly</b></header>
+  <nav>
+    <a class="brand" href="/"><img src="/icon.png" alt="">Printly</a>
+    <div class="links">
+      <span class="pill">AGENT #9855 · LIVE</span>
+      <a href="#how">How it works</a>
+      <a href="https://github.com/adipundir/printly3d" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </nav>
 
   <section class="hero">
-    <h1>Type a prompt.<br><span>Get a printable 3D model.</span></h1>
-    <p>Printly is an OKX.AI agent service. Describe an object and it designs a real, watertight STL you can preview in 3D and send straight to a printer — paid per use with USDT0 on X Layer.</p>
-    <div class="cta">
-      <a class="btn primary" href="/m?s=eyJzaGFwZSI6ImtleWNoYWluIiwidGV4dCI6IlBSSU5UTFkifQ">See a live model →</a>
-      <a class="btn ghost" href="https://github.com/adipundir/printly3d" target="_blank" rel="noopener">View source</a>
+    <div>
+      <div class="eyebrow">OKX.AI Agent Service · <b>x402 on X Layer</b></div>
+      <h1>A prompt goes in.<br>Something you can <em>hold</em> comes out.</h1>
+      <p class="sub">Describe an object and Printly designs it into a real, watertight STL — preview it in 3D, download it, or send it straight to a printer.</p>
+
+      <div class="promptbar">
+        <span class="dot"></span>
+        <span class="typed" id="typed"></span><span class="caret"></span>
+      </div>
+
+      <div class="chips" id="chips"></div>
+
+      <div class="cta">
+        <a class="btn solid" href="#how">See how it works</a>
+        <a class="btn line" href="https://github.com/adipundir/printly3d" target="_blank" rel="noopener">View source ↗</a>
+      </div>
+    </div>
+
+    <div class="stage">
+      <canvas id="c"></canvas>
+      <div class="load" id="load">rendering…</div>
+      <div class="tag" id="tag">drag to rotate</div>
     </div>
   </section>
 
-  <div class="grid">
-    <div class="card"><div class="n">1</div><h3>Describe it</h3><p>“a coffee mug”, “a keychain that says ADITYA”, “a small rocket”. Any object.</p></div>
-    <div class="card"><div class="n">2</div><h3>AI designs it</h3><p>A model composes the shape from printable primitives; we build a watertight STL.</p></div>
-    <div class="card"><div class="n">3</div><h3>Preview &amp; print</h3><p>Rotate it in 3D, download the STL, or hand it to a print service — one click.</p></div>
-  </div>
+  <section class="strip" id="how">
+    <div class="cell"><div class="k">01 / SAY</div><h3>Describe it</h3><p>“a coffee mug”, “a keychain that says ADITYA”, “a small rocket”. Plain words — no CAD.</p></div>
+    <div class="cell"><div class="k">02 / DESIGN</div><h3>AI builds it</h3><p>A model composes the object from printable primitives; Printly assembles a watertight STL.</p></div>
+    <div class="cell"><div class="k">03 / PRINT</div><h3>Preview &amp; make</h3><p>Rotate it, download the STL, or hand it to a print service — with a live material &amp; cost estimate.</p></div>
+  </section>
 
-  <div class="api">
-    <h3>CALL IT (A2MCP · x402 on X Layer)</h3>
-    <pre>POST /v1/model
-{ "prompt": "a small rocket ship" }
+  <div class="code">
+    <div class="lbl">Call it — A2MCP · x402 · X Layer</div>
+    <pre>POST /v1/model   <span class="g">{ "prompt": "a small rocket ship" }</span>
 
-→ 402 Payment Required   (pay 0.05 USDT0)
-→ 200 { viewerUrl, stlUrl, dimensionsMm, printEstimate }</pre>
+<span class="g">→</span> 402 Payment Required        <span class="g">pay 0.05 USDT0</span>
+<span class="g">→</span> 200 { viewerUrl, stlUrl, dimensionsMm, printEstimate }</pre>
   </div>
 
   <footer>
-    <span class="muted">Printly · OKX.AI Agent Service Provider</span>
-    <a href="https://github.com/adipundir/printly3d" target="_blank" rel="noopener">GitHub</a>
-    <a href="/v1/model">API</a>
+    <span>Printly · OKX.AI ASP #9855</span>
+    <span><a href="https://github.com/adipundir/printly3d" target="_blank" rel="noopener">github</a> &nbsp;·&nbsp; <a href="/v1/model">api</a></span>
   </footer>
 </div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+  import * as THREE from 'three';
+  import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  const EXAMPLES = [
+    { label: "keychain 'PRINTLY'", q: "s=eyJzaGFwZSI6ImtleWNoYWluIiwidGV4dCI6IlBSSU5UTFkifQ" },
+    { label: "a coffee mug",        q: "r=H4sIAAAAAAAAA4WR3YqDMBCF3-VcD0uqjZvNY-xtkSVtpxpoVfID2y2--2KhqBiayzCcb745eaAzN4bGqb9cmH9usQFhMC546MMD4T48p_er7c7sQHDmbKOH3gtCy7ZpA3QlCMGZzl9NYOiDIEGlqEd6ByjVDJAJwH4FCL2LfkrbrvleKIR45Ne72EKkzFgUcrbYyS2gygLKGZAQUKsrjv0vCN7-TeNqupFknQgVH7m1S-1EeepzTfBDy44XebXNfOV2losvT1SVbUq9je9ETTjFAB1c5LEe_wFfkyklnAIAAA" },
+    { label: "a small rocket",      q: "r=H4sIAAAAAAAAA62SPWvDMBBA_8vN1yArdkk0tnTqUHCzBRMUR41FbMlIZ0ga_N-LYohdbOohnQTHvXcfuisYWSkQ4CtZljtn85OinS90DQi1dORBbK9Alzok5ZdSm4NygODkQTceRIJQKH0sCETEEMhJ40tJCsSWIcMka_EvfNnjqzEdxb9wa9QdfbFEtroJusDG1iBYr0vGOh4t5vqJFoOBlhOKOQHv8XiMA1_DULC3Z0Dw-jskrDBGnk3UnO2aDbueKMsf4J_iBwUjnqxrfIC1Oab92qjZq_Tum9h9xDIEZ6mLrEOI_YuXz3jVmQC7R0D68fr-tgGEL2vo8_Zz4XILnZ-M8uGEJio8Z23W_gBvdjrxbAMAAA" },
+    { label: "a cute robot",        q: "r=H4sIAAAAAAAAA53T0Q6CIBQG4Hf5r48NEMrxKs01KpZupQ5wy5rv3rxJC1fWLez7OXAOd1TmYqFxaIPduXpfBxAa44KH3t4RumbY3ddXEHx5s9DblJFgxFVOCM5U_mzCsMyI0Wal8p6e7NCdy-poHQjOHMvWQ2eEwpanIkBzFgfw7wlyTFjHAUJOuW8K6-wEq1eRZD-TWMzUmI41Zm8nboZbir_9Ii5GLmeOz_7mS7SadFjEDUqXcxnrhE_5y1iuiTOSb0OZcEGM1G8oNp8fKZ2pU-Q0_Cno4Frb5_0Dcb_GXGkDAAA" },
+    { label: "coin 'OKX'",          q: "s=eyJzaGFwZSI6ImNvaW4iLCJ0ZXh0IjoiT0tYIn0" },
+  ];
+
+  // --- typing animation in the prompt bar ---
+  const typed = document.getElementById('typed');
+  let ei = 0, ci = 0, dir = 1;
+  function tick(){
+    const s = EXAMPLES[ei].label;
+    ci += dir;
+    typed.textContent = s.slice(0, ci);
+    if (ci === s.length) { dir = -1; setTimeout(tick, 1600); return; }
+    if (ci === 0) { dir = 1; ei = (ei + 1) % EXAMPLES.length; }
+    setTimeout(tick, dir > 0 ? 55 : 28);
+  }
+  tick();
+
+  // --- three.js scene ---
+  const canvas = document.getElementById('c');
+  const loadEl = document.getElementById('load');
+  const tagEl = document.getElementById('tag');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 5000);
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false;
+  controls.minDistance = 40; controls.maxDistance = 600;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xcfc7b4, 1.05));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(2,3,2); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xffe6cf, 0.5); rim.position.set(-2,1,-2); scene.add(rim);
+  const mat = new THREE.MeshStandardMaterial({ color:0xcfc9bb, roughness:0.82, metalness:0.02 });
+
+  let mesh = null;
+  function resize(){ const w=canvas.clientWidth,h=canvas.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+  function loadModel(q){
+    loadEl.classList.add('on');
+    new STLLoader().load('/stl?'+q, (geo)=>{
+      geo.computeVertexNormals(); geo.center();
+      if (mesh){ scene.remove(mesh); mesh.geometry.dispose(); }
+      mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.x = -Math.PI/2;
+      scene.add(mesh);
+      geo.computeBoundingSphere();
+      const r = geo.boundingSphere.radius;
+      camera.position.set(r*1.5, r*1.2, r*1.9);
+      controls.target.set(0,0,0); controls.update();
+      resize(); loadEl.classList.remove('on');
+    }, undefined, ()=>{ loadEl.textContent='preview unavailable'; });
+  }
+
+  // --- chips ---
+  const chipsEl = document.getElementById('chips');
+  EXAMPLES.forEach((ex, i)=>{
+    const b = document.createElement('button');
+    b.className = 'chip' + (i===0?' active':'');
+    b.textContent = ex.label;
+    b.onclick = ()=>{ document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); b.classList.add('active'); tagEl.textContent = ex.label; loadModel(ex.q); };
+    chipsEl.appendChild(b);
+  });
+
+  loadModel(EXAMPLES[0].q);
+  tagEl.textContent = EXAMPLES[0].label;
+  window.addEventListener('resize', resize);
+  (function loop(){ requestAnimationFrame(loop); if (mesh) mesh.rotation.z += 0.0035; controls.update(); renderer.render(scene, camera); })();
+</script>
 </body>
 </html>
