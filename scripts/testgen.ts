@@ -1,0 +1,10 @@
+import { promptToRecipe } from "../src/ai/openrouter.js";
+import { generateFromRecipe } from "../src/stl/dsl.js";
+import { writeFileSync } from "node:fs";
+const prompt = process.argv[2] || "a rocket";
+const t=Date.now();
+const r = await promptToRecipe(prompt, 90000);
+const hasText = r.recipe.parts.some((p:any)=>p.type==="text");
+const m = generateFromRecipe(r.recipe);
+writeFileSync("/tmp/stlr/model.stl", m.stl);
+console.log(JSON.stringify({model:r.model, secs:((Date.now()-t)/1000).toFixed(1), parts:r.recipe.parts.length, types:[...new Set(r.recipe.parts.map((p:any)=>p.type))], hasText, name:r.recipe.name}));

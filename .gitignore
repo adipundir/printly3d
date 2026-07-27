@@ -10,3 +10,5 @@ dist/
 api/index.js
 .DS_Store
 HANDOFF.md
+media/
+videos/
