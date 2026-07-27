@@ -11,26 +11,34 @@ import { isRecipe, type Recipe } from "../stl/dsl.js";
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "poolside/laguna-xs-2.1:free";
 
-const SYSTEM = `You are a parametric CAD designer for 3D printing. Given an object description, output ONLY a JSON "recipe" that builds the object by composing primitives. No prose, no markdown fences.
+const SYSTEM = `You are a 3D modeller for 3D printing. Given an object description, design the OBJECT AS A REAL SHAPE by composing solid primitives, and output ONLY a JSON "recipe". No prose, no markdown fences.
 
 JSON shape: {"name":"<short name>","parts":[Part,...]}
 Part fields (millimetres):
 - "type": "box" | "cylinder" | "cone" | "sphere" | "torus" | "text"
 - box: "size":[x,y,z]
 - cylinder: "radius","height" (axis along +z)
-- cone: "radiusBottom","radiusTop","height"
+- cone: "radiusBottom","radiusTop","height"  (a nose/point = small radiusTop; a full point = radiusTop 0)
 - sphere: "radius"
 - torus: "ringRadius","tubeRadius"
 - text: "text","fontSize","thickness"
 - "translate":[x,y,z] (default [0,0,0])
 - "rotate":[x,y,z] degrees (default [0,0,0])
-- "cut": true to subtract this part (for holes/hollows)
+- "cut": true to subtract this part (holes/hollows)
 
-Conventions:
-- Z is up. Build the model sitting on the plate (all z >= 0) and roughly centered on x,y.
-- Primitives are centered at the origin BEFORE translate/rotate. A cylinder/cone of height h spans z from -h/2 to +h/2, so set translate z = h/2 to rest it on the plate.
-- Total size under ~120 mm. Use 4 to 30 parts. Parts must overlap or touch so the result is ONE connected solid (critical for printing). Use "cut" for holes.
-- Prefer a clearly recognizable, printable approximation built from these primitives.
+HARD RULES:
+1. Build the actual 3D SHAPE of the object. NEVER spell the prompt words as 3D text. Only use "type":"text" when the user explicitly asks for letters, a name, a word, a keychain-with-text, a nameplate, or a sign.
+2. Decompose the object into recognizable parts and place them by anatomy. Think about what the thing looks like and approximate it with these primitives.
+3. Printability: the result must be ONE connected solid. Parts MUST overlap or touch (no floating gaps). Give it a flat, stable base sitting on the plate (all z >= 0). Avoid thin fragile spikes and tiny disconnected bits. Keep total size 30 to 120 mm.
+4. Use 5 to 25 parts. Center it near x,y = 0. Primitives are centred at the origin before transform; a cylinder/cone of height h spans -h/2..+h/2 in z, so translate z by h/2 to rest on the plate.
+
+Worked examples of GOOD decomposition (build shapes, not words):
+- rocket: a cone nose (radiusTop 0) on top of a tall cylinder body; 3 or 4 thin boxes as fins around the base; a short wider cylinder as the tail. NO text.
+- mug: a cylinder body, a slightly smaller cylinder cut from the top (hollow), a torus on the side as the handle.
+- house: a box for walls, a wider short box or a 4-sided pyramid (cone with 4 segments feel) as the roof on top; small box door.
+- car: a long low box chassis, a smaller box cabin on top, four short cylinders (rotated 90 on x) as wheels at the corners.
+- tree: a cylinder trunk with 2 or 3 stacked spheres or cones as the foliage on top.
+
 Output ONLY the JSON object.`;
 
 export interface RecipeResult {
