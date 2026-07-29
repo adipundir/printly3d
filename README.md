@@ -85,6 +85,11 @@ Optional:
 Bundled to a single serverless function (`api/index.js` via `npm run bundle`) and deployed on
 Vercel with all routes rewritten to it. Validated with `onchainos agent x402-check`.
 
+`api/index.js` is **committed**, not generated at deploy time: Vercel validates the `functions`
+pattern in `vercel.json` against the source tree before it runs install or build, so a repo
+without the bundle fails with *"the pattern api/index.js doesn't match any Serverless
+Functions"*. Run `npm run bundle` and commit the result whenever `src/` changes.
+
 ## Status
 
 - [x] Parametric STL generator (keychain, nameplate, coin), watertight + printable

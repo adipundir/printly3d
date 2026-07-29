@@ -7,7 +7,6 @@ dist/
 .data/
 .onchainos/
 .vercel
-api/index.js
 .DS_Store
 HANDOFF.md
 media/
