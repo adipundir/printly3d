@@ -1,23 +1,40 @@
 /**
- * X Layer / x402 constants for the STL service. Values come from the OKX A2MCP guide
- * (network eip155:196, USDT0 settlement token, 6 decimals).
+ * X Layer / x402 constants for the STL service. Payment itself is handled by the official
+ * OKX Payment SDK (see `src/x402/payment.ts`) — the SDK resolves the settlement asset for the
+ * network (USD₮0, 6 decimals, on eip155:196) so we only declare the network and a USD price.
  */
-export const XLAYER = {
-  network: "eip155:196",
-  asset: "0x779ded0c9e1022225f8e0630b35a9b54be713736" as `0x${string}`,
-  domainName: "USD₮0",
-  domainVersion: "1",
-} as const;
 
-/** Service fee per model generation, in atomic USDT0 units (6 decimals). 50000 = 0.05 USDT0. */
-export const PRICE_ATOMIC = process.env.MODEL_PRICE_ATOMIC ?? "50000";
+/** CAIP-2 network. eip155:196 = X Layer mainnet, eip155:1952 = X Layer testnet. */
+export const X402_NETWORK = (process.env.X402_NETWORK ?? "eip155:196") as `${string}:${string}`;
+
+/** Service fee per model generation, as a USD price string the SDK converts to atomic USD₮0. */
+export const MODEL_PRICE_USD = `$${process.env.MODEL_PRICE_USD ?? "0.05"}`;
 
 /**
- * Receiving address for the service fee. MUST be set to your X Layer Agentic Wallet address
- * before going live. The placeholder lets the endpoint run and self-check locally.
+ * Receiving address for the service fee. MUST be a real X Layer Agentic Wallet address —
+ * the payment layer refuses to start on the zero address.
  */
 export const PAY_TO = (process.env.PAY_TO ??
   "0x0000000000000000000000000000000000000000") as `0x${string}`;
+
+/** OnchainOS API credentials for the OKX facilitator (web3.okx.com/onchainos/dev-portal). */
+export const OKX = {
+  apiKey: process.env.OKX_API_KEY ?? "",
+  secretKey: process.env.OKX_SECRET_KEY ?? "",
+  passphrase: process.env.OKX_PASSPHRASE ?? "",
+  baseUrl: process.env.OKX_BASE_URL ?? "https://web3.okx.com",
+} as const;
+
+/**
+ * Payer addresses served without being charged, after the facilitator confirms their
+ * signature — for OKX's own review / sampling calls. Comma-separated.
+ */
+export const EXEMPT_PAYERS = (process.env.X402_EXEMPT_PAYERS ?? "")
+  .split(",")
+  .map((a) => a.trim())
+  .filter(Boolean);
+
+export const SERVICE_DESCRIPTION = "Generate one printable STL model from a text prompt";
 
 /** External print service the viewer page hands the STL off to (link-out; we never take the money). */
 export const PRINT_HANDOFF_URL =

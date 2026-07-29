@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { generateModel } from "../src/stl/generate.js";
 import { parsePrompt } from "../src/stl/spec.js";
 import { estimatePrint } from "../src/stl/estimate.js";
+import { encodeSpec } from "../src/server/spec-codec.js";
 import { app } from "../src/server/app.js";
 
 function facetCount(stl: Buffer): number {
@@ -52,48 +53,28 @@ describe("estimate", () => {
   });
 });
 
-describe("x402 endpoint", () => {
-  it("returns 402 with a PAYMENT-REQUIRED header when unpaid", async () => {
-    const res = await app.request("/v1/model", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: "a keychain that says HI" }),
-    });
-    expect(res.status).toBe(402);
-    const hdr = res.headers.get("PAYMENT-REQUIRED");
-    expect(hdr).toBeTruthy();
-    const challenge = JSON.parse(Buffer.from(hdr!, "base64").toString("utf8"));
-    expect(challenge.x402Version).toBe(2);
-    expect(challenge.accepts[0].network).toBe("eip155:196");
-  });
-
-  it("returns a model + viewer URL when a payment header is present", async () => {
-    const res = await app.request("/v1/model", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-payment": "test" },
-      body: JSON.stringify({ prompt: "a coin that says GG" }),
-    });
-    expect(res.status).toBe(200);
-    const body: any = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.spec.shape).toBe("coin");
-    expect(body.viewerUrl).toContain("/m?s=");
-    expect(body.stlUrl).toContain("/stl?s=");
-    expect(body.printEstimate.priceUsd).toBeGreaterThan(0);
-  });
-
+// The payment gate itself is covered end to end in test/x402.test.ts, against the real OKX
+// Payment SDK middleware with a stub facilitator.
+describe("free routes", () => {
   it("serves a valid STL from the stateless spec URL", async () => {
-    const gen = await app.request("/v1/model", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-payment": "test" },
-      body: JSON.stringify({ prompt: "keychain HELLO" }),
-    });
-    const { stlUrl } = (await gen.json()) as any;
-    const path = new URL(stlUrl).pathname + new URL(stlUrl).search;
-    const stlRes = await app.request(path);
+    const encoded = encodeSpec(parsePrompt("keychain HELLO"));
+    const stlRes = await app.request(`/stl?s=${encoded}`);
     expect(stlRes.status).toBe(200);
     expect(stlRes.headers.get("content-type")).toBe("model/stl");
     const buf = Buffer.from(await stlRes.arrayBuffer());
     expect(facetCount(buf)).toBeGreaterThan(100);
+  });
+
+  it("renders the 3D viewer page for that same spec", async () => {
+    const encoded = encodeSpec(parsePrompt("keychain HELLO"));
+    const res = await app.request(`/m?s=${encoded}`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("HELLO");
+  });
+
+  it("describes the service and its price at the root", async () => {
+    const body: any = await (await app.request("/")).json();
+    expect(body.service).toBe("Printly");
+    expect(body.payment).toContain("eip155:196");
   });
 });

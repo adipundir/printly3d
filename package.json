@@ -17,6 +17,9 @@
     "@hono/node-server": "^1.13.7",
     "@jscad/modeling": "^2.13.0",
     "@jscad/stl-serializer": "^2.1.23",
+    "@okxweb3/app-x402-core": "0.2.1",
+    "@okxweb3/app-x402-evm": "^0.2.0",
+    "@okxweb3/app-x402-hono": "^0.2.0",
     "hono": "^4.6.14",
     "viem": "^2.21.54",
     "zod": "^3.24.1"
@@ -29,5 +32,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
+  },
+  "overrides": {
+    "@okxweb3/app-x402-core": "0.2.1"
   }
 }
