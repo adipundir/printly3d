@@ -153,9 +153,11 @@ export function createPaymentMiddleware(): MiddlewareHandler | null {
     secretKey: OKX.secretKey,
     passphrase: OKX.passphrase,
     baseUrl: OKX.baseUrl,
-    // Wait for on-chain confirmation before we answer, so the PAYMENT-RESPONSE header we
-    // hand back carries a real settled transaction rather than a "pending".
-    syncSettle: true,
+    // Do NOT block the response on on-chain confirmation. Settlement runs after the handler,
+    // so syncSettle=true would add block time to every paid call — enough, stacked on model
+    // generation, to time out the caller. The facilitator answers "pending" and completes the
+    // transfer itself; the buyer can follow it up via the tx in PAYMENT-RESPONSE.
+    syncSettle: false,
   });
   return x402Middleware(buildResourceServer(facilitator));
 }

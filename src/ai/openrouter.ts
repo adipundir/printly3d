@@ -3,8 +3,9 @@
  *
  * OpenRouter serves LLMs, which cannot emit a 3D mesh — so the model returns a JSON recipe of
  * primitives that our interpreter (src/stl/dsl.ts) turns into a printable solid. The model is
- * configurable via OPENROUTER_MODEL; free models are slow (~30s), so callers should allow time
- * and fall back to templates on failure.
+ * configurable via OPENROUTER_MODEL. The whole AI path runs under a hard time budget
+ * (AI_BUDGET_MS) because it sits inside a paid HTTP request that a caller is waiting on — when
+ * the budget runs out we throw and the endpoint falls back to the instant template generator.
  */
 import { isRecipe, type Recipe } from "../stl/dsl.js";
 
@@ -50,14 +51,29 @@ export function hasOpenRouter(): boolean {
   return !!process.env.OPENROUTER_API_KEY;
 }
 
-export async function promptToRecipe(prompt: string, timeoutMs = 120_000): Promise<RecipeResult> {
+/**
+ * Total wall-clock the AI path may consume, retries included. This is a hard budget, not a
+ * per-request timeout: whatever is left of it is what each attempt gets. The caller falls back
+ * to the instant template generator when it runs out, so a slow or rate-limited OpenRouter
+ * costs us a few seconds, never the caller's patience. Tune with AI_BUDGET_MS.
+ */
+const AI_BUDGET_MS = Number(process.env.AI_BUDGET_MS ?? 20_000);
+
+export async function promptToRecipe(
+  prompt: string,
+  budgetMs = AI_BUDGET_MS
+): Promise<RecipeResult> {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) throw new Error("OPENROUTER_API_KEY not set");
   const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+  const deadline = Date.now() + budgetMs;
 
-  // First try with JSON mode; if the model rejects it (400), retry without.
-  let content = await callModel(key, model, prompt, true, timeoutMs).catch(async (e) => {
-    if (String(e?.message).includes("400")) return callModel(key, model, prompt, false, timeoutMs);
+  // First try with JSON mode; if the model rejects it (400), retry without — but only with
+  // whatever time is left, so the two attempts can't stack up.
+  let content = await callModel(key, model, prompt, true, deadline).catch(async (e) => {
+    if (String(e?.message).includes("400") && Date.now() < deadline) {
+      return callModel(key, model, prompt, false, deadline);
+    }
     throw e;
   });
 
@@ -70,11 +86,13 @@ async function callModel(
   model: string,
   prompt: string,
   jsonMode: boolean,
-  timeoutMs: number,
+  deadline: number,
   attempt = 0
 ): Promise<string> {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) throw new Error("AI budget exhausted");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), remaining);
   try {
     const body: any = {
       model,
@@ -98,9 +116,10 @@ async function callModel(
       signal: controller.signal,
     });
 
-    if (res.status === 429 && attempt < 1) {
-      await new Promise((r) => setTimeout(r, 4000));
-      return callModel(key, model, prompt, jsonMode, timeoutMs, attempt + 1);
+    // Back off once on rate-limit, but only if the budget can absorb the wait plus a retry.
+    if (res.status === 429 && attempt < 1 && deadline - Date.now() > 8_000) {
+      await new Promise((r) => setTimeout(r, 2000));
+      return callModel(key, model, prompt, jsonMode, deadline, attempt + 1);
     }
     if (!res.ok) {
       const t = await res.text().catch(() => "");

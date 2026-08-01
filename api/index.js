@@ -17789,20 +17789,26 @@ Output ONLY the JSON object.`;
 function hasOpenRouter() {
   return !!process.env.OPENROUTER_API_KEY;
 }
-async function promptToRecipe(prompt, timeoutMs = 12e4) {
+var AI_BUDGET_MS = Number(process.env.AI_BUDGET_MS ?? 2e4);
+async function promptToRecipe(prompt, budgetMs = AI_BUDGET_MS) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) throw new Error("OPENROUTER_API_KEY not set");
   const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
-  let content = await callModel(key, model, prompt, true, timeoutMs).catch(async (e) => {
-    if (String(e?.message).includes("400")) return callModel(key, model, prompt, false, timeoutMs);
+  const deadline = Date.now() + budgetMs;
+  let content = await callModel(key, model, prompt, true, deadline).catch(async (e) => {
+    if (String(e?.message).includes("400") && Date.now() < deadline) {
+      return callModel(key, model, prompt, false, deadline);
+    }
     throw e;
   });
   const recipe = parseRecipe(content);
   return { recipe, model };
 }
-async function callModel(key, model, prompt, jsonMode, timeoutMs, attempt = 0) {
+async function callModel(key, model, prompt, jsonMode, deadline, attempt = 0) {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) throw new Error("AI budget exhausted");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), remaining);
   try {
     const body = {
       model,
@@ -17824,9 +17830,9 @@ async function callModel(key, model, prompt, jsonMode, timeoutMs, attempt = 0) {
       body: JSON.stringify(body),
       signal: controller.signal
     });
-    if (res.status === 429 && attempt < 1) {
-      await new Promise((r) => setTimeout(r, 4e3));
-      return callModel(key, model, prompt, jsonMode, timeoutMs, attempt + 1);
+    if (res.status === 429 && attempt < 1 && deadline - Date.now() > 8e3) {
+      await new Promise((r) => setTimeout(r, 2e3));
+      return callModel(key, model, prompt, jsonMode, deadline, attempt + 1);
     }
     if (!res.ok) {
       const t = await res.text().catch(() => "");
@@ -25337,9 +25343,11 @@ function createPaymentMiddleware() {
     secretKey: OKX.secretKey,
     passphrase: OKX.passphrase,
     baseUrl: OKX.baseUrl,
-    // Wait for on-chain confirmation before we answer, so the PAYMENT-RESPONSE header we
-    // hand back carries a real settled transaction rather than a "pending".
-    syncSettle: true
+    // Do NOT block the response on on-chain confirmation. Settlement runs after the handler,
+    // so syncSettle=true would add block time to every paid call — enough, stacked on model
+    // generation, to time out the caller. The facilitator answers "pending" and completes the
+    // transfer itself; the buyer can follow it up via the tx in PAYMENT-RESPONSE.
+    syncSettle: false
   });
   return x402Middleware(buildResourceServer(facilitator));
 }
