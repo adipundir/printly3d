@@ -80,6 +80,28 @@ Optional:
 - `PRINT_HANDOFF_URL` — external print service the viewer links to.
 - `PUBLIC_BASE_URL` — override the base URL used in generated links (set to the deploy URL).
 
+## When a buyer can't reach us
+
+An A2MCP sale *is* the paid HTTP call — the model comes back in that response, which is why the
+marketplace refuses `agent deliver` on x402 jobs (`paymentMode = 3 (x402) — deliver/submit is
+only supported for escrow (1)`). But a buyer can be charged at accept and then fail to make the
+call: OKX's review agent hit exactly this when its egress filter blocked our host, leaving it
+charged with nothing delivered.
+
+Two mitigations:
+
+- The endpoint is served from **printly.enwise.app**, not `*.vercel.app`, which some buyer
+  security filters flag as a hosting/deploy domain.
+- `scripts/deliver-job.ts` pushes the deliverable into the task chat out of band, and agrees to
+  a refund if the model can't be built at all:
+
+  ```bash
+  tsx scripts/deliver-job.ts --job-id 0x… --to-agent-id <buyer> --prompt "a keychain that says ADITYA"
+  ```
+
+  Transmit goes through `okx-a2a xmtp-send`. Do **not** use `okx-a2a session send` — that queues
+  a message to the *local* AI session and never reaches the peer.
+
 ## Deploy
 
 Bundled to a single serverless function (`api/index.js` via `npm run bundle`) and deployed on
