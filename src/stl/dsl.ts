@@ -120,6 +120,27 @@ function buildNode(node: RecipeNode): any {
   return g;
 }
 
+/**
+ * Rough polygon cost per primitive, used to bound CSG work before we start it. Part count alone
+ * is a bad proxy: spheres and text tessellate into far more polygons than a box, and boolean
+ * union/subtract cost grows with total polygon count, not part count. /m and /stl rebuild from
+ * an untrusted query, so a recipe that would take a minute has to be refused up front rather
+ * than discovered by timing out.
+ */
+const PART_COST: Record<string, number> = {
+  box: 12,
+  cylinder: 128,
+  cone: 128,
+  sphere: 1_100,
+  torus: 2_000,
+  text: 1_500,
+};
+const MAX_COMPLEXITY = 40_000;
+
+function recipeCost(recipe: Recipe): number {
+  return recipe.parts.reduce((sum, p) => sum + (PART_COST[String(p.type)] ?? 128), 0);
+}
+
 /** Validate + build a recipe into a single watertight geom3. Throws on an unusable recipe. */
 export function buildRecipe(recipe: Recipe): any {
   if (!recipe || !Array.isArray(recipe.parts) || recipe.parts.length === 0) {
@@ -127,6 +148,10 @@ export function buildRecipe(recipe: Recipe): any {
   }
   if (recipe.parts.length > MAX_PARTS) {
     throw new Error(`too many parts (${recipe.parts.length} > ${MAX_PARTS})`);
+  }
+  const cost = recipeCost(recipe);
+  if (cost > MAX_COMPLEXITY) {
+    throw new Error(`recipe too complex (cost ${cost} > ${MAX_COMPLEXITY})`);
   }
 
   const solids: any[] = [];

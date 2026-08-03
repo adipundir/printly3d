@@ -19,6 +19,16 @@ import { viewerPage } from "./viewer.js";
 import { MODEL_PRICE_USD, PUBLIC_BASE_URL, X402_NETWORK } from "../stl/config.js";
 import { createPaymentMiddleware, paymentsMisconfiguration } from "../x402/payment.js";
 
+/**
+ * /m and /stl are free and their output is a pure function of the query, so the CDN can serve
+ * every repeat without touching the function. That is both a cost saving and the main defence
+ * against someone replaying the same heavy model reference: they get a cache hit, we get one
+ * generation. Failures are cached briefly too, so a flood of bad references can't be used to
+ * hammer the origin either.
+ */
+const CACHE_MODEL = "public, max-age=3600, s-maxage=31536000, immutable";
+const CACHE_ERROR = "public, max-age=60, s-maxage=300";
+
 function baseUrl(c: any): string {
   if (PUBLIC_BASE_URL) return PUBLIC_BASE_URL.replace(/\/$/, "");
   const url = new URL(c.req.url);
@@ -160,10 +170,12 @@ export function createApp(payment: MiddlewareHandler | null): Hono {
     try {
       built = modelFromQuery(c);
     } catch (e: any) {
+      c.header("Cache-Control", CACHE_ERROR);
       return c.text(`bad or missing model reference: ${e?.message ?? e}`, 400);
     }
     const { model, fname } = built;
     c.header("Content-Type", "model/stl");
+    c.header("Cache-Control", CACHE_MODEL);
     if (c.req.query("dl")) c.header("Content-Disposition", `attachment; filename="${fname}.stl"`);
     const ab = model.stl.buffer.slice(model.stl.byteOffset, model.stl.byteOffset + model.stl.byteLength);
     return c.body(ab as ArrayBuffer);
@@ -175,11 +187,13 @@ export function createApp(payment: MiddlewareHandler | null): Hono {
     try {
       built = modelFromQuery(c);
     } catch (e: any) {
+      c.header("Cache-Control", CACHE_ERROR);
       return c.text(`bad or missing model reference: ${e?.message ?? e}`, 400);
     }
     const { model, title, subtitle } = built;
     const stlQuery = c.req.query("r") ? `r=${c.req.query("r")}` : `s=${c.req.query("s")}`;
     const html = viewerPage({ title, subtitle, stlQuery, dims: model.bbox, estimate: estimatePrint(model.volumeMm3) });
+    c.header("Cache-Control", CACHE_MODEL);
     return c.html(html);
   });
 

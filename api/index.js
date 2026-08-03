@@ -17656,12 +17656,28 @@ function buildNode(node) {
   }
   return g;
 }
+var PART_COST = {
+  box: 12,
+  cylinder: 128,
+  cone: 128,
+  sphere: 1100,
+  torus: 2e3,
+  text: 1500
+};
+var MAX_COMPLEXITY = 4e4;
+function recipeCost(recipe) {
+  return recipe.parts.reduce((sum, p) => sum + (PART_COST[String(p.type)] ?? 128), 0);
+}
 function buildRecipe(recipe) {
   if (!recipe || !Array.isArray(recipe.parts) || recipe.parts.length === 0) {
     throw new Error("recipe has no parts");
   }
   if (recipe.parts.length > MAX_PARTS) {
     throw new Error(`too many parts (${recipe.parts.length} > ${MAX_PARTS})`);
+  }
+  const cost = recipeCost(recipe);
+  if (cost > MAX_COMPLEXITY) {
+    throw new Error(`recipe too complex (cost ${cost} > ${MAX_COMPLEXITY})`);
   }
   const solids = [];
   const cuts = [];
@@ -17864,11 +17880,14 @@ function parseRecipe(content) {
 
 // src/server/spec-codec.ts
 import { gzipSync, gunzipSync } from "node:zlib";
+var MAX_ENCODED_CHARS = 4096;
+var MAX_DECODED_BYTES = 64 * 1024;
 function encodeSpec(spec) {
   const json = JSON.stringify({ shape: spec.shape, text: spec.text, textSize: spec.textSize });
   return Buffer.from(json, "utf8").toString("base64url");
 }
 function decodeSpec(s) {
+  if (s.length > MAX_ENCODED_CHARS) throw new Error("spec reference too large");
   const obj = JSON.parse(Buffer.from(s, "base64url").toString("utf8"));
   if (!obj || typeof obj.shape !== "string" || typeof obj.text !== "string") {
     throw new Error("bad spec");
@@ -17880,7 +17899,10 @@ function encodeRecipe(recipe) {
   return gzipSync(Buffer.from(json, "utf8")).toString("base64url");
 }
 function decodeRecipe(r) {
-  const json = gunzipSync(Buffer.from(r, "base64url")).toString("utf8");
+  if (r.length > MAX_ENCODED_CHARS) throw new Error("recipe reference too large");
+  const json = gunzipSync(Buffer.from(r, "base64url"), {
+    maxOutputLength: MAX_DECODED_BYTES
+  }).toString("utf8");
   const obj = JSON.parse(json);
   if (!isRecipe(obj)) throw new Error("bad recipe");
   return obj;
@@ -25353,6 +25375,8 @@ function createPaymentMiddleware() {
 }
 
 // src/server/app.ts
+var CACHE_MODEL = "public, max-age=3600, s-maxage=31536000, immutable";
+var CACHE_ERROR = "public, max-age=60, s-maxage=300";
 function baseUrl(c) {
   if (PUBLIC_BASE_URL) return PUBLIC_BASE_URL.replace(/\/$/, "");
   const url = new URL(c.req.url);
@@ -25468,10 +25492,12 @@ function createApp(payment) {
     try {
       built = modelFromQuery(c);
     } catch (e) {
+      c.header("Cache-Control", CACHE_ERROR);
       return c.text(`bad or missing model reference: ${e?.message ?? e}`, 400);
     }
     const { model, fname } = built;
     c.header("Content-Type", "model/stl");
+    c.header("Cache-Control", CACHE_MODEL);
     if (c.req.query("dl")) c.header("Content-Disposition", `attachment; filename="${fname}.stl"`);
     const ab = model.stl.buffer.slice(model.stl.byteOffset, model.stl.byteOffset + model.stl.byteLength);
     return c.body(ab);
@@ -25481,11 +25507,13 @@ function createApp(payment) {
     try {
       built = modelFromQuery(c);
     } catch (e) {
+      c.header("Cache-Control", CACHE_ERROR);
       return c.text(`bad or missing model reference: ${e?.message ?? e}`, 400);
     }
     const { model, title, subtitle } = built;
     const stlQuery = c.req.query("r") ? `r=${c.req.query("r")}` : `s=${c.req.query("s")}`;
     const html = viewerPage({ title, subtitle, stlQuery, dims: model.bbox, estimate: estimatePrint(model.volumeMm3) });
+    c.header("Cache-Control", CACHE_MODEL);
     return c.html(html);
   });
   return app2;
